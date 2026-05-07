@@ -337,8 +337,8 @@ renderer.toneMappingExposure = 1.15;
 
 // ─── SCENE ──────────────────────────────────────────────────
 var scene = new THREE.Scene();
-scene.background = new THREE.Color(0x05090f);
-scene.fog = new THREE.FogExp2(0x05090f, 0.026);
+scene.background = new THREE.Color(0x5a9fd4);
+scene.fog = new THREE.Fog(0x8ec5e8, 20, 58);
 
 var camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
 camera.position.set(9, 5, 10);
@@ -362,42 +362,73 @@ controls.addEventListener('end', function(){
 });
 
 // ─── LIGHTS ─────────────────────────────────────────────────
-scene.add(new THREE.AmbientLight(0x203050, 1.4));
+// Sky (blue) to ground (warm green) hemisphere for natural outdoor look
+scene.add(new THREE.HemisphereLight(0x87ceeb, 0x3a6018, 1.1));
 
-var sun = new THREE.DirectionalLight(0xfff0d8, 2.8);
-sun.position.set(10, 12, 8);
+var sun = new THREE.DirectionalLight(0xfff8e8, 3.8);
+sun.position.set(12, 16, 8);
 sun.castShadow = true;
 sun.shadow.mapSize.width  = 2048;
 sun.shadow.mapSize.height = 2048;
-sun.shadow.camera.left = sun.shadow.camera.bottom = -14;
-sun.shadow.camera.right = sun.shadow.camera.top  =  14;
-sun.shadow.camera.far = 50;
+sun.shadow.camera.left = sun.shadow.camera.bottom = -16;
+sun.shadow.camera.right = sun.shadow.camera.top  =  16;
+sun.shadow.camera.far = 60;
 sun.shadow.bias = -0.001;
 scene.add(sun);
 
-var fillLight = new THREE.DirectionalLight(0x1040a0, 0.8);
-fillLight.position.set(-8, 2, -6);
+// Soft sky fill from opposite side
+var fillLight = new THREE.DirectionalLight(0x9ab8d8, 0.9);
+fillLight.position.set(-10, 6, -8);
 scene.add(fillLight);
 
-var rimLight = new THREE.DirectionalLight(0xf06010, 0.35);
-rimLight.position.set(2, -4, -8);
-scene.add(rimLight);
+renderer.toneMappingExposure = 0.92;
 
 // ─── GROUND ─────────────────────────────────────────────────
 var GROUND_Y = -2.0;
 
-var grid = new THREE.GridHelper(50, 50, 0x152035, 0x0e1828);
-grid.position.y = GROUND_Y;
-scene.add(grid);
+// ── Procedural grass texture ──────────────────────────────────
+(function() {
+  var gc = document.createElement('canvas');
+  gc.width = 512; gc.height = 512;
+  var gx = gc.getContext('2d');
+  gx.fillStyle = '#2d5c14'; gx.fillRect(0,0,512,512);
+  for (var i=0; i<900; i++) {
+    var px=Math.random()*512, py=Math.random()*512;
+    var r=20+Math.floor(Math.random()*45), g=72+Math.floor(Math.random()*60), b=Math.floor(Math.random()*12);
+    gx.fillStyle='rgba('+r+','+g+','+b+',0.5)';
+    gx.fillRect(px, py, 1+Math.random()*5, 1+Math.random()*2.5);
+  }
+  var grassTex = new THREE.CanvasTexture(gc);
+  grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping;
+  grassTex.repeat.set(14, 14);
+  var gnd = new THREE.Mesh(
+    new THREE.PlaneGeometry(80, 80),
+    new THREE.MeshStandardMaterial({ map: grassTex, roughness: 0.92, metalness: 0 })
+  );
+  gnd.rotation.x = -Math.PI/2;
+  gnd.position.y = GROUND_Y - 0.01;
+  gnd.receiveShadow = true;
+  scene.add(gnd);
 
-var gnd = new THREE.Mesh(
-  new THREE.PlaneGeometry(50, 50),
-  new THREE.MeshStandardMaterial({ color: 0x080c14, roughness: 1 })
-);
-gnd.rotation.x = -Math.PI / 2;
-gnd.position.y = GROUND_Y - 0.01;
-gnd.receiveShadow = true;
-scene.add(gnd);
+  // Oil/dirt stain under the tank
+  var dc = document.createElement('canvas');
+  dc.width = 512; dc.height = 256;
+  var dx = dc.getContext('2d');
+  var dg = dx.createRadialGradient(256,128,0,256,128,220);
+  dg.addColorStop(0,'rgba(12,6,1,0.92)');
+  dg.addColorStop(0.42,'rgba(28,14,3,0.58)');
+  dg.addColorStop(1,'rgba(0,0,0,0)');
+  dx.fillStyle=dg; dx.fillRect(0,0,512,256);
+  var dirtTex = new THREE.CanvasTexture(dc);
+  var dirt = new THREE.Mesh(
+    new THREE.PlaneGeometry(11, 5),
+    new THREE.MeshStandardMaterial({ map: dirtTex, transparent: true, depthWrite: false, roughness: 1 })
+  );
+  dirt.rotation.x = -Math.PI/2;
+  dirt.position.y = GROUND_Y + 0.02;
+  dirt.renderOrder = 1;
+  scene.add(dirt);
+})();
 
 // ─── VISUAL CONSTANTS ───────────────────────────────────────
 var VR = 1.5;   // visual radius
@@ -621,6 +652,164 @@ tankGroup.add(valveAssembly);
   lbl.rotation.x = -Math.PI / 2;
   lbl.renderOrder = 10;
   tankGroup.add(lbl);
+})();
+
+// ─── SEMER AYAKLARI ─────────────────────────────────────────
+(function() {
+  var sMat = new THREE.MeshStandardMaterial({ color: 0x4e5e6a, metalness: 0.80, roughness: 0.30 });
+
+  function buildSaddle(xPos) {
+    var g = new THREE.Group();
+
+    // Arc cradle — torus wrapping under the tank body
+    var arc = new THREE.Mesh(
+      new THREE.TorusGeometry(VR + 0.08, 0.09, 12, 48, Math.PI * 1.30),
+      sMat
+    );
+    arc.rotation.y = Math.PI / 2;
+    arc.rotation.x = Math.PI * 0.85;
+    arc.castShadow = true;
+    g.add(arc);
+
+    // Two vertical side plates flanking the arc
+    [-1, 1].forEach(function(side) {
+      var plate = new THREE.Mesh(new THREE.BoxGeometry(0.22, VR * 1.35, 0.10), sMat);
+      plate.position.set(0, -VR * 0.12, side * VR * 0.90);
+      plate.castShadow = true;
+      g.add(plate);
+    });
+
+    // Bottom connecting bar
+    var bar = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.10, VR * 1.84), sMat);
+    bar.position.set(0, -VR - 0.04, 0);
+    g.add(bar);
+
+    // Stiffener gussets
+    [-1, 1].forEach(function(side) {
+      var gus = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.18), sMat);
+      gus.position.set(0, -VR + 0.30, side * VR * 0.90);
+      g.add(gus);
+    });
+
+    g.position.x = xPos;
+    tankGroup.add(g);
+  }
+  buildSaddle(-VL / 3.5);
+  buildSaddle( VL / 3.5);
+})();
+
+// ─── PAS DOKUSU ─────────────────────────────────────────────
+(function() {
+  var rc = document.createElement('canvas');
+  rc.width = 512; rc.height = 256;
+  var rx = rc.getContext('2d');
+  rx.clearRect(0, 0, 512, 256);
+
+  // Rust patches
+  [
+    {x:62,y:50,r:34},{x:208,y:172,r:24},{x:368,y:78,r:26},
+    {x:455,y:192,r:20},{x:142,y:118,r:17},{x:308,y:33,r:19},
+    {x:415,y:48,r:14},{x:78,y:198,r:21},{x:262,y:88,r:13},{x:488,y:125,r:28}
+  ].forEach(function(p) {
+    var grd = rx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r);
+    grd.addColorStop(0,'rgba(155,58,8,0.75)');
+    grd.addColorStop(0.5,'rgba(112,40,6,0.50)');
+    grd.addColorStop(1,'rgba(80,25,4,0)');
+    rx.fillStyle=grd; rx.beginPath(); rx.arc(p.x,p.y,p.r,0,Math.PI*2); rx.fill();
+  });
+  // Rust run-down streaks
+  for (var i=0;i<12;i++) {
+    rx.save();
+    rx.strokeStyle='rgba(135,52,8,0.28)';
+    rx.lineWidth=1.5+Math.random()*2.5;
+    var sx=Math.random()*512, sy=Math.random()*80;
+    rx.beginPath(); rx.moveTo(sx,sy);
+    rx.lineTo(sx+(Math.random()-.5)*16, sy+45+Math.random()*85);
+    rx.stroke(); rx.restore();
+  }
+
+  var rustTex = new THREE.CanvasTexture(rc);
+  var rustMesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(VR + 0.003, VR + 0.003, VL, 64, 1, true),
+    new THREE.MeshBasicMaterial({ map: rustTex, alphaMap: rustTex, transparent: true, depthWrite: false, opacity: 0.62 })
+  );
+  rustMesh.rotation.z = Math.PI / 2;
+  rustMesh.renderOrder = 4;
+  tankGroup.add(rustMesh);
+})();
+
+// ─── EMNİYET VENTİLİ ────────────────────────────────────────
+(function() {
+  var vMat = new THREE.MeshStandardMaterial({ color: 0x607888, metalness: 0.88, roughness: 0.18 });
+  var rMat = new THREE.MeshStandardMaterial({ color: 0xdd2020, metalness: 0.5, roughness: 0.4, emissive: new THREE.Color(0x280000) });
+
+  // Mounting base flange
+  var fl = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.06, 16), vMat);
+  fl.position.set(VL/2-0.5, VR+0.05, 0.38);
+  tankGroup.add(fl);
+
+  // Body
+  var body = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.10, 0.28, 16), vMat);
+  body.position.set(VL/2-0.5, VR+0.22, 0.38);
+  tankGroup.add(body);
+
+  // Spring housing (wider section)
+  var hsg = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.11, 16), vMat);
+  hsg.position.set(VL/2-0.5, VR+0.42, 0.38);
+  tankGroup.add(hsg);
+
+  // Red spring cap
+  var cap = new THREE.Mesh(new THREE.SphereGeometry(0.10, 16, 8, 0, Math.PI*2, 0, Math.PI/2), rMat);
+  cap.position.set(VL/2-0.5, VR+0.54, 0.38);
+  tankGroup.add(cap);
+
+  // Lateral discharge pipe
+  var out = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.22, 8), vMat);
+  out.rotation.z = Math.PI/2;
+  out.position.set(VL/2-0.39, VR+0.42, 0.38);
+  tankGroup.add(out);
+
+  // Bolt ring
+  var br = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.014, 8, 18), vMat);
+  br.position.set(VL/2-0.5, VR+0.10, 0.38);
+  br.rotation.x = Math.PI/2;
+  tankGroup.add(br);
+})();
+
+// ─── TEL ÇİT ────────────────────────────────────────────────
+(function() {
+  var postMat = new THREE.MeshStandardMaterial({ color: 0x6a7a80, metalness: 0.72, roughness: 0.42 });
+  var wireMat = new THREE.MeshStandardMaterial({ color: 0x8a9898, metalness: 0.82, roughness: 0.28 });
+
+  // Arka çit
+  for (var fi=-5; fi<=5; fi++) {
+    var p = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 2.2, 8), postMat);
+    p.position.set(fi*2.4, GROUND_Y+1.1, -10);
+    p.castShadow = true;
+    scene.add(p);
+  }
+  [0.4, 0.95, 1.7].forEach(function(h) {
+    var w = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 24, 6), wireMat);
+    w.rotation.z = Math.PI/2;
+    w.position.set(0, GROUND_Y+h, -10);
+    scene.add(w);
+  });
+
+  // Sol ve sağ yan çitler
+  [-1, 1].forEach(function(side) {
+    for (var fj=0; fj<=4; fj++) {
+      var sp = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 2.2, 8), postMat);
+      sp.position.set(side*10, GROUND_Y+1.1, -10+fj*2.4);
+      sp.castShadow = true;
+      scene.add(sp);
+    }
+    [0.4, 0.95, 1.7].forEach(function(h) {
+      var sw = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 9.6, 6), wireMat);
+      sw.rotation.x = Math.PI/2;
+      sw.position.set(side*10, GROUND_Y+h, -5.2);
+      scene.add(sw);
+    });
+  });
 })();
 
 // ─── CALCULATIONS ────────────────────────────────────────────
