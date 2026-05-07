@@ -619,39 +619,42 @@ function buildValve() {
 var valveAssembly = buildValve();
 tankGroup.add(valveAssembly);
 
-// ─── LABEL ÖZDEMİRELLER ─────────────────────────────────────
+// ─── YAN YAZI ÖZDEMİRELLER ──────────────────────────
 (function() {
-  var lc  = document.createElement('canvas');
-  lc.width = 1024; lc.height = 180;
-  var ctx = lc.getContext('2d');
+  var c = document.createElement("canvas");
+  c.width = 1024; c.height = 180;
+  var ctx = c.getContext("2d");
 
-  // Background strip
-  ctx.fillStyle = 'rgba(240,128,16,0.15)';
-  ctx.beginPath();
-  ctx.rect(8, 10, 1008, 160);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(240,128,16,0.5)';
-  ctx.lineWidth = 2;
-  ctx.stroke();
+  ctx.textAlign    = "center";
+  ctx.textBaseline = "middle";
+  ctx.font         = "bold 100px Segoe UI, Arial Black, sans-serif";
+  ctx.shadowColor  = "rgba(0,0,0,0.55)";
+  ctx.shadowBlur   = 14;
+  ctx.shadowOffsetY = 5;
+  ctx.fillStyle    = "#f08010";
+  ctx.fillText("ÖZDEMİRELLER", 512, 90);
 
-  // Text
-  ctx.fillStyle = '#f08010';
-  ctx.font = 'bold 96px Segoe UI, Arial';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.shadowColor = 'rgba(240,128,16,0.65)';
-  ctx.shadowBlur = 16;
-  ctx.fillText('ÖZDEMIRELLER', 512, 92);
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  ctx.fillStyle  = "rgba(255,200,80,0.18)";
+  ctx.fillText("ÖZDEMİRELLER", 512, 86);
 
-  var tex = new THREE.CanvasTexture(lc);
-  var lbl = new THREE.Mesh(
-    new THREE.PlaneGeometry(4.2, 0.70),
-    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false })
-  );
-  lbl.position.set(0, VR + 0.02, 0);
-  lbl.rotation.x = -Math.PI / 2;
-  lbl.renderOrder = 10;
-  tankGroup.add(lbl);
+  var tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.minFilter = THREE.LinearFilter;
+
+  var mat  = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
+  var geom = new THREE.PlaneGeometry(3.6, 0.72);
+
+  var yaziR = new THREE.Mesh(geom, mat);
+  yaziR.position.set(0, 0.1, VR + 0.01);
+  yaziR.renderOrder = 6;
+  tankGroup.add(yaziR);
+
+  var yaziL = new THREE.Mesh(geom, mat);
+  yaziL.position.set(0, 0.1, -(VR + 0.01));
+  yaziL.rotation.y = Math.PI;
+  yaziL.renderOrder = 6;
+  tankGroup.add(yaziL);
 })();
 
 // ─── SEMER AYAKLARI ─────────────────────────────────────────
