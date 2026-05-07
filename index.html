@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ÖZDEMİRELLER — Mazot Tanker Simülasyonu</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080c12;--panel:#0f1520;--card:#0a0f19;--border:#1e2d42;
+  --accent:#f08010;--accent2:#ffc040;--glow:rgba(240,128,16,.18);
+  --text:#dde6f0;--muted:#5a7090;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;display:flex;flex-direction:column}
+
+header{background:var(--panel);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-badge{width:38px;height:38px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1rem;color:#000}
+.brand-text h1{font-size:.95rem;color:var(--accent);letter-spacing:3px;text-transform:uppercase;font-weight:700}
+.brand-text p{font-size:.62rem;color:var(--muted);margin-top:1px}
+.hdr-right{text-align:right;font-size:.68rem;color:var(--muted)}
+.hdr-right strong{display:block;font-size:.88rem;color:var(--text);font-family:'Courier New',monospace;letter-spacing:1px}
+
+main{display:flex;flex:1;overflow:hidden}
+
+#panel{width:315px;min-width:315px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;padding:12px;gap:10px}
+#panel::-webkit-scrollbar{width:4px}
+#panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+.sec{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px}
+.sec-hd{font-size:.6rem;text-transform:uppercase;letter-spacing:1.8px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.sec-hd::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.fld{margin-bottom:8px}
+.fld:last-child{margin-bottom:0}
+.fld label{display:block;font-size:.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}
+.irow{display:flex;align-items:center;gap:7px}
+.irow input,.irow select{flex:1;background:#060a10;border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:7px;font-size:.95rem;font-family:'Courier New',monospace;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;appearance:none}
+.irow input:focus,.irow select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--glow)}
+.irow select{cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a7090'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+.ulbl{font-size:.68rem;color:var(--muted);white-space:nowrap;min-width:28px}
+.hint-txt{font-size:.58rem;color:var(--muted);margin-top:3px;font-style:italic}
+
+.mtog{display:flex;gap:5px;margin-bottom:10px}
+.mbtn{flex:1;padding:6px 3px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:.6rem;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;transition:all .2s}
+.mbtn.on{background:var(--accent);border-color:var(--accent);color:#000;font-weight:700}
+
+.net-box{background:linear-gradient(135deg,rgba(240,128,16,.12),rgba(240,128,16,.06));border:1px solid rgba(240,128,16,.4);border-radius:8px;padding:12px 10px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.net-val{font-size:1.7rem;font-weight:700;color:var(--accent2);font-family:'Courier New',monospace}
+.net-right{text-align:right}
+.net-pct{font-size:1.2rem;font-weight:700;color:var(--accent);font-family:'Courier New',monospace}
+.net-lbl{font-size:.58rem;color:var(--muted);text-transform:uppercase;margin-top:2px}
+
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.scard{background:#060a10;border:1px solid var(--border);border-radius:7px;padding:9px 8px;text-align:center}
+.scard.warn{border-color:rgba(240,80,80,.4)}
+.sv{font-size:1.1rem;font-weight:700;color:var(--accent2);font-family:'Courier New',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scard.warn .sv{color:#f87171}
+.sk{font-size:.57rem;color:var(--muted);text-transform:uppercase;margin-top:2px}
+
+.flbl{display:flex;justify-content:space-between;font-size:.6rem;color:var(--muted);margin-bottom:4px;margin-top:8px}
+.ftrack{height:18px;background:#060a10;border:1px solid var(--border);border-radius:9px;overflow:hidden;position:relative}
+.fbar{height:100%;border-radius:9px;background:linear-gradient(90deg,#5a2000,#b85a08,#f0900a,#ffc040);transition:width .65s cubic-bezier(.4,0,.2,1)}
+.fpct{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:.7rem;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.9);pointer-events:none}
+
+.dead-bar-wrap{margin-top:4px}
+.dead-bar{height:4px;background:rgba(248,113,113,.2);border-radius:2px;margin-bottom:2px;position:relative}
+.dead-bar-fill{height:100%;background:#f87171;border-radius:2px;transition:width .5s}
+.dead-lbl{font-size:.55rem;color:#f87171}
+
+.btns{display:flex;flex-direction:column;gap:6px}
+.btn{padding:10px;border-radius:8px;border:none;cursor:pointer;font-size:.8rem;font-weight:600;letter-spacing:.5px;transition:all .2s;width:100%}
+.btn-orange{background:var(--accent);color:#000}
+.btn-orange:hover{background:#ffa030;transform:translateY(-1px);box-shadow:0 4px 16px rgba(240,128,16,.4)}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+
+#viewport{flex:1;position:relative;overflow:hidden}
+#c3d{display:block;width:100%;height:100%}
+.hint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:.62rem;color:var(--muted);background:rgba(0,0,0,.6);padding:4px 14px;border-radius:20px;pointer-events:none;white-space:nowrap}
+
+footer{background:var(--panel);border-top:1px solid var(--border);padding:7px 20px;display:flex;justify-content:space-between;align-items:center;font-size:.63rem;color:var(--muted);flex-shrink:0}
+footer strong{color:var(--accent)}
+footer .pow strong{color:var(--text)}
+
+/* ── MOBİL LAYOUT ────────────────────────────────────────── */
+@media (max-width: 768px) {
+  html,body{overflow:auto;height:auto}
+  body{flex-direction:column}
+
+  header{padding:8px 12px}
+  .brand-badge{width:30px;height:30px;font-size:.9rem}
+  .brand-text h1{font-size:.78rem;letter-spacing:2px}
+  .brand-text p{display:none}
+  .hdr-right{font-size:.6rem}
+  .hdr-right strong{font-size:.78rem}
+
+  main{flex-direction:column;overflow:visible;flex:none}
+
+  #viewport{order:1;width:100%;height:52vw;min-height:200px;flex:none}
+
+  #panel{order:2;width:100%;min-width:0;border-right:none;border-top:1px solid var(--border);
+         max-height:none;overflow-y:visible;flex:none}
+
+  .net-val{font-size:1.4rem}
+  .net-pct{font-size:1rem}
+  .sv{font-size:.95rem}
+
+  .irow input,.irow select{padding:9px 10px;font-size:1rem}
+  .btn{padding:12px;font-size:.85rem}
+
+  .sgrid{grid-template-columns:1fr 1fr 1fr 1fr}
+
+  footer{padding:6px 12px;font-size:.58rem;flex-wrap:wrap;gap:4px}
+}
+
+@media (max-width: 480px) {
+  #viewport{height:56vw}
+  .sgrid{grid-template-columns:1fr 1fr}
+  .hint{font-size:.55rem;padding:3px 10px}
+}
+
+@media print{
+  html,body{overflow:auto;height:auto;background:#fff;color:#111}
+  header,main,footer{display:none!important}
+  #print-sheet{display:block!important}
+  @page{margin:15mm;size:A4}
+}
+#print-sheet{display:none;font-family:'Segoe UI',Arial,sans-serif;color:#111;background:#fff}
+.pr-head{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:3px solid #f08010;margin-bottom:18px}
+.pr-logo{font-size:2rem;font-weight:900;color:#f08010;letter-spacing:4px}
+.pr-sub{font-size:.78rem;color:#666;margin-top:3px}
+.pr-meta{text-align:right;font-size:.78rem;color:#555}
+.pr-meta strong{display:block;font-size:.95rem;font-weight:700;color:#111;margin-bottom:3px}
+.pr-sec{font-size:.68rem;text-transform:uppercase;letter-spacing:1.5px;color:#888;margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid #e5e5e5}
+.pr-table{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:.82rem}
+.pr-table th{background:#f08010;color:#fff;padding:8px 12px;text-align:left;font-weight:600}
+.pr-table td{padding:7px 12px;border-bottom:1px solid #eee}
+.pr-table tr:nth-child(even) td{background:#fafafa}
+.pr-table .val{font-family:'Courier New',monospace;font-weight:600;color:#1a1a1a}
+.pr-net-box{background:#fff8f0;border:2px solid #f08010;border-radius:8px;padding:14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.pr-net-val{font-size:1.8rem;font-weight:700;color:#e06000;font-family:'Courier New',monospace}
+.pr-net-sub{font-size:.75rem;color:#888}
+.pr-gauge{height:22px;background:#e8e8e8;border-radius:11px;overflow:hidden;margin:8px 0 4px}
+.pr-gfill{height:100%;border-radius:11px;background:linear-gradient(90deg,#7c3000,#e07010,#ffc040)}
+.pr-gauge-row{display:flex;justify-content:space-between;font-size:.7rem;color:#888;margin-bottom:14px}
+.pr-canvas-wrap{text-align:center;margin:8px 0 14px}
+.pr-canvas{border:1px solid #ddd;border-radius:8px;max-width:100%}
+.pr-sig{display:flex;justify-content:space-between;font-size:.68rem;color:#aaa;margin-top:18px;padding-top:10px;border-top:1px solid #eee}
+.pr-sig strong{color:#555}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-badge">Ö</div>
+    <div class="brand-text">
+      <h1>ÖZDEMİRELLER</h1>
+      <p>Mazot Tanker Simülasyonu</p>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <strong id="clock">--:--:--</strong>
+    <span id="dateTxt">--.--.----</span>
+  </div>
+</header>
+
+<main>
+<aside id="panel">
+
+  <div class="sec">
+    <div class="sec-hd">Tanker Boyutları</div>
+    <div class="fld">
+      <label>Tanker Çapı</label>
+      <div class="irow"><input type="number" id="inDiam" value="255" min="1" step="1"><span class="ulbl">cm</span></div>
+    </div>
+    <div class="fld">
+      <label>Tanker Uzunluğu</label>
+      <div class="irow"><input type="number" id="inLen" value="295" min="1" step="1"><span class="ulbl">cm</span></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-hd">Tanker Pozisyonu</div>
+    <div class="fld">
+      <label>Arka Yükseklik (Eğim)</label>
+      <div class="irow"><input type="number" id="inTilt" value="0" min="0" step="0.5"><span class="ulbl">cm</span></div>
+      <p class="hint-txt">Arka ucun önden fazla yüksekliği</p>
+    </div>
+    <div class="fld">
+      <label>Ölçüm Noktası</label>
+      <div class="irow">
+        <select id="inMeasPoint">
+          <option value="on">Ön (Vana Tarafı)</option>
+          <option value="orta">Orta</option>
+          <option value="arka">Arka</option>
+        </select>
+      </div>
+    </div>
+    <div class="fld">
+      <label>Vana Yüksekliği (Ölü Alan)</label>
+      <div class="irow"><input type="number" id="inVana" value="0" min="0" step="0.5"><span class="ulbl">cm</span></div>
+      <p class="hint-txt">Vananın tank tabanından yüksekliği</p>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-hd">Ölçüm Girişi</div>
+    <div class="mtog">
+      <button class="mbtn on" id="modeH" onclick="setMode('h')">Yükseklik &#8594; Litre</button>
+      <button class="mbtn" id="modeL" onclick="setMode('l')">Litre &#8594; Yükseklik</button>
+    </div>
+    <div id="fieldH" class="fld">
+      <label>Ölçülen Sıvı Yüksekliği</label>
+      <div class="irow"><input type="number" id="inHeight" value="38" min="0" step="0.1"><span class="ulbl">cm</span></div>
+    </div>
+    <div id="fieldL" class="fld" style="display:none">
+      <label>Bilinen Litre Miktarı</label>
+      <div class="irow"><input type="number" id="inLiters" value="0" min="0" step="1"><span class="ulbl">L</span></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-hd">Hesaplanan Değerler</div>
+    <div class="net-box">
+      <div>
+        <div class="net-val" id="outNet">0</div>
+        <div class="net-lbl">Net Kullanılabilir (L)</div>
+      </div>
+      <div class="net-right">
+        <div class="net-pct" id="outPctNet">0%</div>
+        <div class="net-lbl">Net Doluluk %</div>
+      </div>
+    </div>
+    <div class="sgrid">
+      <div class="scard"><div class="sv" id="outTotal">0</div><div class="sk">Toplam Hacim (L)</div></div>
+      <div class="scard warn"><div class="sv" id="outDead">0</div><div class="sk">Ölü Hacim (L)</div></div>
+      <div class="scard"><div class="sv" id="outMax">0</div><div class="sk">Maks. Kapasite (L)</div></div>
+      <div class="scard"><div class="sv" id="outEmpty">0</div><div class="sk">Boş Alan (L)</div></div>
+      <div class="scard"><div class="sv" id="outHeight">0</div><div class="sk">Ölçülen Yük. (cm)</div></div>
+      <div class="scard"><div class="sv" id="outRadius">0</div><div class="sk">Yarıçap (cm)</div></div>
+    </div>
+    <div class="flbl"><span>BOŞ</span><span>NET DOLU</span></div>
+    <div class="ftrack">
+      <div class="fbar" id="fillBar" style="width:0%"></div>
+      <div class="fpct" id="fillPct">0%</div>
+    </div>
+    <div class="dead-bar-wrap">
+      <div class="dead-bar"><div class="dead-bar-fill" id="deadBarFill" style="width:0%"></div></div>
+      <div class="dead-lbl">Ölü Alan: <span id="deadPctLbl">0%</span></div>
+    </div>
+  </div>
+
+  <div class="btns">
+    <button class="btn btn-orange" onclick="printReport()">&#128438; Rapor Al / Yazdır</button>
+    <button class="btn btn-outline" onclick="resetForm()">&#8635; Sıfırla</button>
+  </div>
+
+</aside>
+
+<div id="viewport">
+  <canvas id="c3d"></canvas>
+  <div class="hint">&#128432; Sürükle: döndür &nbsp;|&nbsp; Scroll: yaklaştır/uzaklaştır</div>
+</div>
+</main>
+
+<footer>
+  <span>Made By <strong>Nurettin ÖZCAN</strong></span>
+  <span style="color:var(--border)">&#9679;</span>
+  <span class="pow">Powered by <strong>ÜLGEN Software</strong></span>
+</footer>
+
+<!-- PRINT SHEET -->
+<div id="print-sheet">
+  <div class="pr-head">
+    <div><div class="pr-logo">ÖZDEMİRELLER</div><div class="pr-sub">Mazot Tanker Ölçüm Raporu</div></div>
+    <div class="pr-meta"><strong>ÖLÇÜM RAPORU</strong><div id="pr-date">—</div><div id="pr-time">—</div></div>
+  </div>
+  <div class="pr-sec">Tanker Yapısal Bilgileri</div>
+  <table class="pr-table">
+    <thead><tr><th>Parametre</th><th>Değer</th><th>Birim</th></tr></thead>
+    <tbody>
+      <tr><td>Tanker Çapı</td><td class="val" id="pr-diam">—</td><td>cm</td></tr>
+      <tr><td>Tanker Uzunluğu</td><td class="val" id="pr-len">—</td><td>cm</td></tr>
+      <tr><td>Yarıçap</td><td class="val" id="pr-rad">—</td><td>cm</td></tr>
+      <tr><td>Arka Yükseklik (Eğim)</td><td class="val" id="pr-tilt">—</td><td>cm</td></tr>
+      <tr><td>Vana Yüksekliği</td><td class="val" id="pr-vana">—</td><td>cm</td></tr>
+      <tr><td>Ölçüm Noktası</td><td class="val" id="pr-meas">—</td><td>—</td></tr>
+      <tr><td>Maksimum Kapasite</td><td class="val" id="pr-max">—</td><td>Litre</td></tr>
+    </tbody>
+  </table>
+  <div class="pr-sec">Ölçüm Sonuçları</div>
+  <div class="pr-net-box">
+    <div><div class="pr-net-val" id="pr-net">—</div><div class="pr-net-sub">Net Kullanılabilir Mazot</div></div>
+    <div style="text-align:right">
+      <div style="font-size:1.4rem;font-weight:700;color:#e06000;font-family:'Courier New',monospace" id="pr-pctnet">—</div>
+      <div class="pr-net-sub">Net Doluluk %</div>
+    </div>
+  </div>
+  <table class="pr-table">
+    <thead><tr><th>Parametre</th><th>Değer</th><th>Birim</th></tr></thead>
+    <tbody>
+      <tr><td>Ölçülen Yükseklik</td><td class="val" id="pr-h">—</td><td>cm</td></tr>
+      <tr><td>Toplam Hacim</td><td class="val" id="pr-vol">—</td><td>Litre</td></tr>
+      <tr><td>Ölü Hacim (Vana Altı)</td><td class="val" id="pr-dead">—</td><td>Litre</td></tr>
+      <tr><td>Net Kullanılabilir</td><td class="val" id="pr-netval">—</td><td>Litre</td></tr>
+      <tr><td>Boş Alan (Net)</td><td class="val" id="pr-emp">—</td><td>Litre</td></tr>
+    </tbody>
+  </table>
+  <div class="pr-sec">Net Doluluk Göstergesi</div>
+  <div class="pr-gauge"><div class="pr-gfill" id="pr-gfill" style="width:0%"></div></div>
+  <div class="pr-gauge-row"><span>0% — BOŞ</span><span id="pr-gpct">0%</span><span>100% — DOLU</span></div>
+  <div class="pr-sec">Kesit Görünümü</div>
+  <div class="pr-canvas-wrap"><canvas id="pr-canvas" class="pr-canvas" width="640" height="220"></canvas></div>
+  <div class="pr-sig">
+    <span>Made By <strong>Nurettin ÖZCAN</strong></span>
+    <span>Powered by <strong>ÜLGEN Software</strong></span>
+  </div>
+</div>
+
+<script>
+// ─── RENDERER ───────────────────────────────────────────────
+var canvas3d = document.getElementById('c3d');
+var vp       = document.getElementById('viewport');
+
+var renderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.localClippingEnabled = true;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+
+// ─── SCENE ──────────────────────────────────────────────────
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05090f);
+scene.fog = new THREE.FogExp2(0x05090f, 0.026);
+
+var camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
+camera.position.set(9, 5, 10);
+
+var controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping  = true;
+controls.dampingFactor  = 0.06;
+controls.minDistance    = 4;
+controls.maxDistance    = 30;
+controls.autoRotate     = true;
+controls.autoRotateSpeed= 0.3;
+controls.target.set(0, 0, 0);
+
+var idleTimer;
+controls.addEventListener('start', function(){
+  controls.autoRotate = false;
+  clearTimeout(idleTimer);
+});
+controls.addEventListener('end', function(){
+  idleTimer = setTimeout(function(){ controls.autoRotate = true; }, 4000);
+});
+
+// ─── LIGHTS ─────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0x203050, 1.4));
+
+var sun = new THREE.DirectionalLight(0xfff0d8, 2.8);
+sun.position.set(10, 12, 8);
+sun.castShadow = true;
+sun.shadow.mapSize.width  = 2048;
+sun.shadow.mapSize.height = 2048;
+sun.shadow.camera.left = sun.shadow.camera.bottom = -14;
+sun.shadow.camera.right = sun.shadow.camera.top  =  14;
+sun.shadow.camera.far = 50;
+sun.shadow.bias = -0.001;
+scene.add(sun);
+
+var fillLight = new THREE.DirectionalLight(0x1040a0, 0.8);
+fillLight.position.set(-8, 2, -6);
+scene.add(fillLight);
+
+var rimLight = new THREE.DirectionalLight(0xf06010, 0.35);
+rimLight.position.set(2, -4, -8);
+scene.add(rimLight);
+
+// ─── GROUND ─────────────────────────────────────────────────
+var GROUND_Y = -2.0;
+
+var grid = new THREE.GridHelper(50, 50, 0x152035, 0x0e1828);
+grid.position.y = GROUND_Y;
+scene.add(grid);
+
+var gnd = new THREE.Mesh(
+  new THREE.PlaneGeometry(50, 50),
+  new THREE.MeshStandardMaterial({ color: 0x080c14, roughness: 1 })
+);
+gnd.rotation.x = -Math.PI / 2;
+gnd.position.y = GROUND_Y - 0.01;
+gnd.receiveShadow = true;
+scene.add(gnd);
+
+// ─── VISUAL CONSTANTS ───────────────────────────────────────
+var VR = 1.5;   // visual radius
+var VL = 5.5;   // visual length
+
+// ─── MATERIALS ──────────────────────────────────────────────
+var bodyMat  = new THREE.MeshStandardMaterial({ color: 0x3a4f62, metalness: 0.75, roughness: 0.22, transparent: true, opacity: 0.38, depthWrite: false });
+var capMat   = new THREE.MeshStandardMaterial({ color: 0x4a6070, metalness: 0.80, roughness: 0.18, transparent: true, opacity: 0.55, depthWrite: false });
+var innerMat = new THREE.MeshStandardMaterial({ color: 0x0d1820, metalness: 0.55, roughness: 0.65 });
+var liquidClip = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
+var liquidMat  = new THREE.MeshStandardMaterial({ color: 0xb07808, emissive: new THREE.Color(0x6a4508), emissiveIntensity: 0.55, metalness: 0.08, roughness: 0.35, clippingPlanes: [liquidClip] });
+var surfaceMat = new THREE.MeshStandardMaterial({ color: 0xd49a12, emissive: new THREE.Color(0x7a5200), emissiveIntensity: 0.4, metalness: 0.15, roughness: 0.12, transparent: true, opacity: 0.92 });
+var stripeMat  = new THREE.MeshStandardMaterial({ color: 0xf08010, metalness: 0.3,  roughness: 0.55, emissive: new THREE.Color(0x301800) });
+var detailMat  = new THREE.MeshStandardMaterial({ color: 0x607880, metalness: 0.88, roughness: 0.18 });
+var steelMat   = new THREE.MeshStandardMaterial({ color: 0x506070, metalness: 0.85, roughness: 0.22 });
+var valveMat   = new THREE.MeshStandardMaterial({ color: 0x708898, metalness: 0.85, roughness: 0.2  });
+var valveRedMat= new THREE.MeshStandardMaterial({ color: 0xcc2020, metalness: 0.55, roughness: 0.35, emissive: new THREE.Color(0x330000) });
+
+// ─── TANK GROUP ──────────────────────────────────────────────
+var tankGroup = new THREE.Group();
+scene.add(tankGroup);
+
+// Body cylinder
+var bodyMesh = new THREE.Mesh(new THREE.CylinderGeometry(VR, VR, VL, 64, 1, false), bodyMat);
+bodyMesh.rotation.z = Math.PI / 2;
+bodyMesh.castShadow = true;
+bodyMesh.renderOrder = 2;
+tankGroup.add(bodyMesh);
+
+// End caps — outer (transparent shell) + inner (dark fill)
+function addCap(xPos, flipX) {
+  // Dark inner hemisphere — fills the hollow look inside the transparent cap
+  var inner = new THREE.Mesh(new THREE.SphereGeometry(VR - 0.09, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2), innerMat);
+  inner.rotation.z = flipX ? -Math.PI / 2 : Math.PI / 2;
+  inner.position.x = xPos;
+  inner.renderOrder = -1;
+  tankGroup.add(inner);
+
+  // Transparent outer dome
+  var m = new THREE.Mesh(new THREE.SphereGeometry(VR, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2), capMat);
+  m.rotation.z = flipX ? -Math.PI / 2 : Math.PI / 2;
+  m.position.x = xPos;
+  m.castShadow = true;
+  m.renderOrder = 3;
+  tankGroup.add(m);
+}
+addCap(-VL / 2, false);
+addCap( VL / 2, true);
+
+// Inner wall — dark background visible through transparent body shell
+var innerMesh = new THREE.Mesh(new THREE.CylinderGeometry(VR - 0.08, VR - 0.08, VL - 0.05, 64, 1, false), innerMat);
+innerMesh.rotation.z = Math.PI / 2;
+innerMesh.renderOrder = -1;
+tankGroup.add(innerMesh);
+
+// Liquid cylinder (clipped)
+var liqMesh = new THREE.Mesh(new THREE.CylinderGeometry(VR - 0.04, VR - 0.04, VL + 0.1, 64, 1, false), liquidMat);
+liqMesh.rotation.z = Math.PI / 2;
+liqMesh.renderOrder = 0;
+tankGroup.add(liqMesh);
+
+// Liquid end-cap hemispheres — same clip plane, fills liquid into the rounded ends
+function addLiqCap(xPos, flipX) {
+  var m = new THREE.Mesh(new THREE.SphereGeometry(VR - 0.05, 48, 48, 0, Math.PI * 2, 0, Math.PI / 2), liquidMat);
+  m.rotation.z = flipX ? -Math.PI / 2 : Math.PI / 2;
+  m.position.x = xPos;
+  m.renderOrder = 0;
+  tankGroup.add(m);
+}
+addLiqCap(-VL / 2, false);
+addLiqCap( VL / 2, true);
+
+// Liquid surface (stays horizontal — child of SCENE)
+var surfaceMesh = new THREE.Mesh(new THREE.PlaneGeometry(VL, VR * 2), surfaceMat);
+surfaceMesh.rotation.x = -Math.PI / 2;
+surfaceMesh.renderOrder = 1;
+surfaceMesh.visible = false;
+scene.add(surfaceMesh);
+
+// Internal light — illuminates liquid from inside the tank
+var tankLight = new THREE.PointLight(0xd49a12, 1.8, 8);
+tankLight.position.set(0, 0, 0);
+tankGroup.add(tankLight);
+
+// Orange stripes
+[-2, 0, 2].forEach(function(x) {
+  var ring = new THREE.Mesh(new THREE.TorusGeometry(VR + 0.01, 0.045, 8, 64), stripeMat);
+  ring.rotation.y = Math.PI / 2;
+  ring.position.x = x;
+  tankGroup.add(ring);
+});
+
+// ─── TOP FITTINGS ────────────────────────────────────────────
+function addFitting(xPos) {
+  var flange = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.07, 16), steelMat);
+  flange.position.set(xPos, VR + 0.035, 0);
+  flange.castShadow = true;
+  tankGroup.add(flange);
+
+  var neck = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 0.22, 16), detailMat);
+  neck.position.set(xPos, VR + 0.18, 0);
+  tankGroup.add(neck);
+
+  var cap = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.07, 16), steelMat);
+  cap.position.set(xPos, VR + 0.32, 0);
+  tankGroup.add(cap);
+
+  var bolt = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.018, 6, 12), steelMat);
+  bolt.position.set(xPos, VR + 0.07, 0);
+  bolt.rotation.x = Math.PI / 2;
+  tankGroup.add(bolt);
+}
+addFitting(-VL / 2 + 0.5);
+addFitting(0);
+addFitting( VL / 2 - 0.5);
+
+// Main hatch (center, larger)
+var hatch = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.2, 20), valveMat);
+hatch.position.set(0, VR + 0.1, 0);
+tankGroup.add(hatch);
+var hatchLid = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.05, 20), steelMat);
+hatchLid.position.set(0, VR + 0.225, 0);
+tankGroup.add(hatchLid);
+
+// ─── VALVE ASSEMBLY ─────────────────────────────────────────
+function buildValve() {
+  var g = new THREE.Group();
+
+  // Connection pipe
+  var p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.10, 0.45, 16), valveMat);
+  p1.rotation.z = Math.PI / 2;
+  p1.position.x = -0.22;
+  g.add(p1);
+
+  // Flanges
+  [-0.0, -0.44].forEach(function(x) {
+    var f = new THREE.Mesh(new THREE.CylinderGeometry(0.135, 0.135, 0.06, 16), steelMat);
+    f.rotation.z = Math.PI / 2;
+    f.position.x = x;
+    g.add(f);
+  });
+
+  // Valve body
+  var vBody = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.28, 16), valveMat);
+  vBody.rotation.z = Math.PI / 2;
+  vBody.position.x = -0.60;
+  g.add(vBody);
+
+  // Bonnet stem
+  var bonnet = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.26, 12), valveMat);
+  bonnet.position.set(-0.60, 0.25, 0);
+  g.add(bonnet);
+
+  // Handle wheel
+  var wheel = new THREE.Mesh(new THREE.TorusGeometry(0.20, 0.025, 8, 24), valveRedMat);
+  wheel.position.set(-0.60, 0.44, 0);
+  g.add(wheel);
+
+  // Spokes
+  var spoke1 = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.38, 6), valveRedMat);
+  spoke1.position.set(-0.60, 0.44, 0);
+  g.add(spoke1);
+
+  var spoke2 = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.38, 6), valveRedMat);
+  spoke2.position.set(-0.60, 0.44, 0);
+  spoke2.rotation.x = Math.PI / 2;
+  g.add(spoke2);
+
+  // Stem cap
+  var stemCap = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.04, 12), valveMat);
+  stemCap.position.set(-0.60, 0.56, 0);
+  g.add(stemCap);
+
+  // Output pipe
+  var p2 = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.10, 0.30, 16), valveMat);
+  p2.rotation.z = Math.PI / 2;
+  p2.position.x = -0.90;
+  g.add(p2);
+
+  // Drain pipe (vertical)
+  var drain = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.35, 12), valveMat);
+  drain.position.set(-1.08, -0.17, 0);
+  g.add(drain);
+
+  g.position.set(-VL / 2 - 0.02, -VR + 0.28, 0);
+  return g;
+}
+var valveAssembly = buildValve();
+tankGroup.add(valveAssembly);
+
+// ─── LABEL ÖZDEMİRELLER ─────────────────────────────────────
+(function() {
+  var lc  = document.createElement('canvas');
+  lc.width = 1024; lc.height = 180;
+  var ctx = lc.getContext('2d');
+
+  // Background strip
+  ctx.fillStyle = 'rgba(240,128,16,0.15)';
+  ctx.beginPath();
+  ctx.rect(8, 10, 1008, 160);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(240,128,16,0.5)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Text
+  ctx.fillStyle = '#f08010';
+  ctx.font = 'bold 96px Segoe UI, Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(240,128,16,0.65)';
+  ctx.shadowBlur = 16;
+  ctx.fillText('ÖZDEMIRELLER', 512, 92);
+
+  var tex = new THREE.CanvasTexture(lc);
+  var lbl = new THREE.Mesh(
+    new THREE.PlaneGeometry(4.2, 0.70),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false })
+  );
+  lbl.position.set(0, VR + 0.02, 0);
+  lbl.rotation.x = -Math.PI / 2;
+  lbl.renderOrder = 10;
+  tankGroup.add(lbl);
+})();
+
+// ─── CALCULATIONS ────────────────────────────────────────────
+function xSectionArea(r, h) {
+  var hc = Math.max(0, Math.min(h, 2 * r));
+  if (hc <= 0) return 0;
+  if (hc >= 2 * r) return Math.PI * r * r;
+  var a = Math.acos(Math.max(-1, Math.min(1, (r - hc) / r)));
+  return r * r * a - (r - hc) * Math.sqrt(Math.max(0, 2 * r * hc - hc * hc));
+}
+
+function calcVolume(diam, len, h_abs, h_arka) {
+  var r  = diam / 2;
+  var N  = 200;
+  var dx = len / N;
+  function f(x) { return xSectionArea(r, h_abs - x * h_arka / len); }
+  var sum = f(0) + f(len);
+  for (var i = 1; i < N; i++) sum += (i % 2 === 1 ? 4 : 2) * f(i * dx);
+  return (dx / 3) * sum / 1000;
+}
+
+function findHAbs(diam, len, liters, h_arka) {
+  var maxL = calcVolume(diam, len, diam, h_arka);
+  var t    = Math.max(0, Math.min(liters, maxL));
+  if (t <= 0) return 0;
+  if (t >= maxL) return diam;
+  var lo = 0, hi = diam;
+  for (var i = 0; i < 80; i++) {
+    var mid = (lo + hi) / 2;
+    if (calcVolume(diam, len, mid, h_arka) < t) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+// ─── STATE ──────────────────────────────────────────────────
+var calcMode = 'h';
+var cur = {};
+
+// ─── WAVE STATE ─────────────────────────────────────────────
+var y_liq_base   = 0;
+var waveOffset   = 0;
+var waveMomentum = 0;
+var prevCamAz    = null;
+
+// ─── UPDATE ─────────────────────────────────────────────────
+function update() {
+  var diam     = parseFloat(document.getElementById('inDiam').value)  || 0;
+  var len      = parseFloat(document.getElementById('inLen').value)   || 0;
+  var h_arka   = parseFloat(document.getElementById('inTilt').value)  || 0;
+  var h_vana   = parseFloat(document.getElementById('inVana').value)  || 0;
+  var measPoint= document.getElementById('inMeasPoint').value;
+
+  if (diam <= 0 || len <= 0) return;
+
+  var xRatio    = measPoint === 'on' ? 0 : measPoint === 'orta' ? 0.5 : 1.0;
+  var elev_meas = xRatio * h_arka;
+
+  var h_abs, h_measured, totalL;
+
+  if (calcMode === 'h') {
+    h_measured = parseFloat(document.getElementById('inHeight').value) || 0;
+    h_abs      = elev_meas + h_measured;
+    totalL     = calcVolume(diam, len, h_abs, h_arka);
+  } else {
+    var inputL = parseFloat(document.getElementById('inLiters').value) || 0;
+    h_abs      = findHAbs(diam, len, inputL, h_arka);
+    h_measured = Math.max(0, h_abs - elev_meas);
+    totalL     = calcVolume(diam, len, h_abs, h_arka);
+  }
+
+  var maxL    = calcVolume(diam, len, diam, h_arka);
+  var deadL   = h_vana > 0 ? calcVolume(diam, len, h_vana, h_arka) : 0;
+  var netL    = Math.max(0, totalL - deadL);
+  var maxNetL = Math.max(0.001, maxL - deadL);
+  var pctNet  = Math.min(100, netL / maxNetL * 100);
+  var pctDead = maxL > 0 ? Math.min(100, deadL / maxL * 100) : 0;
+  var emptyL  = Math.max(0, maxNetL - netL);
+
+  cur = { diam: diam, len: len, h_abs: h_abs, h_measured: h_measured,
+          totalL: totalL, deadL: deadL, netL: netL, maxL: maxL,
+          maxNetL: maxNetL, pctNet: pctNet, pctDead: pctDead, emptyL: emptyL,
+          h_arka: h_arka, h_vana: h_vana, measPoint: measPoint };
+
+  document.getElementById('outNet').textContent      = Math.round(netL);
+  document.getElementById('outPctNet').textContent   = pctNet.toFixed(1) + '%';
+  document.getElementById('outTotal').textContent    = Math.round(totalL);
+  document.getElementById('outDead').textContent     = Math.round(deadL);
+  document.getElementById('outMax').textContent      = Math.round(maxL);
+  document.getElementById('outEmpty').textContent    = Math.round(emptyL);
+  document.getElementById('outHeight').textContent   = h_measured.toFixed(1);
+  document.getElementById('outRadius').textContent   = (diam / 2).toFixed(1);
+  document.getElementById('fillBar').style.width     = pctNet + '%';
+  document.getElementById('fillPct').textContent     = pctNet.toFixed(1) + '%';
+  document.getElementById('deadBarFill').style.width = pctDead + '%';
+  document.getElementById('deadPctLbl').textContent  = pctDead.toFixed(1) + '%';
+
+  update3D(h_abs, diam, len, h_arka);
+}
+
+// ─── UPDATE 3D ───────────────────────────────────────────────
+function update3D(h_abs, diam, len, h_arka) {
+  var r      = diam / 2;
+  var alpha  = len > 0 ? Math.atan2(h_arka, len) : 0;
+  var scaleR = VR / r;
+
+  // Tilt
+  tankGroup.rotation.z = alpha;
+  // Keep front-bottom at GROUND_Y
+  tankGroup.position.y = GROUND_Y + VR * Math.cos(alpha) + (VL / 2) * Math.sin(alpha);
+
+  // Visual liquid height
+  var h_abs_vis = h_abs * scaleR;
+  var y_liq     = GROUND_Y + h_abs_vis;
+  y_liq_base    = y_liq;
+  waveOffset    = 0;
+  waveMomentum  = 0;
+  liquidClip.constant = y_liq;
+
+  // Surface mesh
+  var h_vis     = Math.max(0, Math.min(h_abs_vis, 2 * VR));
+  var chordHalf = Math.sqrt(Math.max(0, VR * VR - (VR - h_vis) * (VR - h_vis)));
+  surfaceMesh.geometry.dispose();
+  surfaceMesh.geometry = new THREE.PlaneGeometry(VL, chordHalf * 2);
+  surfaceMesh.position.y = y_liq;
+  surfaceMesh.visible = h_vis > 0.02 && h_vis < 2 * VR - 0.02;
+
+  // Color by fill
+  var ratio = Math.min(1, h_vis / (2 * VR));
+  liquidMat.color.setRGB(0.42 + ratio * 0.28, 0.22 + ratio * 0.28, 0.01);
+  liquidMat.emissiveIntensity = 0.35 + ratio * 0.3;
+  surfaceMat.color.setRGB(0.65 + ratio * 0.2, 0.45 + ratio * 0.2, 0.04);
+  tankLight.intensity = 0.8 + ratio * 1.4;
+}
+
+// ─── MODE TOGGLE ─────────────────────────────────────────────
+function setMode(m) {
+  calcMode = m;
+  document.getElementById('modeH').classList.toggle('on', m === 'h');
+  document.getElementById('modeL').classList.toggle('on', m === 'l');
+  document.getElementById('fieldH').style.display = m === 'h' ? '' : 'none';
+  document.getElementById('fieldL').style.display = m === 'l' ? '' : 'none';
+  update();
+}
+window.setMode = setMode;
+
+function resetForm() {
+  document.getElementById('inDiam').value  = 255;
+  document.getElementById('inLen').value   = 295;
+  document.getElementById('inTilt').value  = 0;
+  document.getElementById('inVana').value  = 0;
+  document.getElementById('inHeight').value= 0;
+  document.getElementById('inLiters').value= 0;
+  document.getElementById('inMeasPoint').value = 'on';
+  update();
+}
+window.resetForm = resetForm;
+
+// ─── PRINT ───────────────────────────────────────────────────
+function printReport() {
+  var d   = cur;
+  var now = new Date();
+  document.getElementById('pr-date').textContent   = now.toLocaleDateString('tr-TR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  document.getElementById('pr-time').textContent   = 'Saat: ' + now.toLocaleTimeString('tr-TR');
+  document.getElementById('pr-diam').textContent   = d.diam.toFixed(1);
+  document.getElementById('pr-len').textContent    = d.len.toFixed(1);
+  document.getElementById('pr-rad').textContent    = (d.diam / 2).toFixed(1);
+  document.getElementById('pr-tilt').textContent   = d.h_arka.toFixed(1);
+  document.getElementById('pr-vana').textContent   = d.h_vana.toFixed(1);
+  document.getElementById('pr-meas').textContent   = d.measPoint === 'on' ? 'Ön' : d.measPoint === 'orta' ? 'Orta' : 'Arka';
+  document.getElementById('pr-max').textContent    = d.maxL.toFixed(2);
+  document.getElementById('pr-net').textContent    = d.netL.toFixed(2) + ' L';
+  document.getElementById('pr-pctnet').textContent = d.pctNet.toFixed(2) + '%';
+  document.getElementById('pr-h').textContent      = d.h_measured.toFixed(2);
+  document.getElementById('pr-vol').textContent    = d.totalL.toFixed(2);
+  document.getElementById('pr-dead').textContent   = d.deadL.toFixed(2);
+  document.getElementById('pr-netval').textContent = d.netL.toFixed(2);
+  document.getElementById('pr-emp').textContent    = d.emptyL.toFixed(2);
+  document.getElementById('pr-gfill').style.width  = d.pctNet + '%';
+  document.getElementById('pr-gpct').textContent   = d.pctNet.toFixed(1) + '%';
+  drawCrossSection(document.getElementById('pr-canvas'), d);
+  window.print();
+}
+window.printReport = printReport;
+
+function drawCrossSection(c, d) {
+  var W = c.width, H = c.height;
+  var ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#f5f7fa'; ctx.fillRect(0, 0, W, H);
+
+  var cx = W / 2, cy = H / 2;
+  var R  = Math.min(H * 0.38, 82);
+  var ratio     = Math.min(1, Math.max(0, d.h_measured / d.diam));
+  var surfY     = cy + R - ratio * 2 * R;
+  var deadRatio = d.h_vana > 0 ? Math.min(1, d.h_vana / d.diam) : 0;
+  var deadY     = cy + R - deadRatio * 2 * R;
+
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.fillStyle = '#dce5ee'; ctx.fill();
+  ctx.strokeStyle = '#7a8fa0'; ctx.lineWidth = 2.5; ctx.stroke();
+
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, R - 2.5, 0, Math.PI * 2); ctx.clip();
+  if (deadRatio > 0) {
+    ctx.fillStyle = 'rgba(248,113,113,0.35)';
+    ctx.fillRect(cx - R, deadY, R * 2, cy + R - deadY + 5);
+  }
+  var lg = ctx.createLinearGradient(0, surfY, 0, cy + R);
+  lg.addColorStop(0, '#c8900a'); lg.addColorStop(1, '#7a4a04');
+  ctx.fillStyle = lg; ctx.fillRect(cx - R, surfY, R * 2, cy + R - surfY + 5);
+  var sg = ctx.createLinearGradient(0, surfY, 0, surfY + 5);
+  sg.addColorStop(0, 'rgba(255,210,80,0.55)'); sg.addColorStop(1, 'transparent');
+  ctx.fillStyle = sg; ctx.fillRect(cx - R, surfY, R * 2, 5);
+  ctx.restore();
+
+  if (deadRatio > 0 && deadRatio < 1) {
+    ctx.setLineDash([4, 3]);
+    ctx.strokeStyle = '#f87171'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx - R, deadY); ctx.lineTo(cx + R, deadY); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#f87171'; ctx.font = '10px Segoe UI'; ctx.textAlign = 'left';
+    ctx.fillText('Vana: ' + d.h_vana.toFixed(1) + ' cm', cx - R + 4, deadY - 3);
+  }
+
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.strokeStyle = '#5a7080'; ctx.lineWidth = 2; ctx.stroke();
+
+  var ax = cx + R + 22;
+  ctx.strokeStyle = '#444'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(ax, cy + R); ctx.lineTo(ax, surfY); ctx.stroke();
+  [[ax, cy + R, 1], [ax, surfY, -1]].forEach(function(arr) {
+    var x = arr[0], y = arr[1], dir = arr[2];
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 5, y - dir * 8); ctx.lineTo(x + 5, y - dir * 8);
+    ctx.closePath(); ctx.fillStyle = '#444'; ctx.fill();
+  });
+  ctx.fillStyle = '#333'; ctx.font = 'bold 11px Segoe UI'; ctx.textAlign = 'center';
+  ctx.fillText('h = ' + d.h_measured.toFixed(1) + ' cm', ax + 32, (cy + R + surfY) / 2 + 4);
+
+  ctx.strokeStyle = '#666'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(cx - R, cy - R - 14); ctx.lineTo(cx + R, cy - R - 14); ctx.stroke();
+  [[-1, cx - R], [1, cx + R]].forEach(function(arr) {
+    var dir = arr[0], x = arr[1];
+    ctx.beginPath(); ctx.moveTo(x, cy - R - 14); ctx.lineTo(x + dir * 8, cy - R - 19); ctx.lineTo(x + dir * 8, cy - R - 9);
+    ctx.closePath(); ctx.fillStyle = '#666'; ctx.fill();
+  });
+  ctx.fillStyle = '#444'; ctx.font = 'bold 11px Segoe UI'; ctx.textAlign = 'center';
+  ctx.fillText('Ø = ' + d.diam.toFixed(1) + ' cm', cx, cy - R - 18);
+
+  ctx.fillStyle = '#555'; ctx.font = '11px Segoe UI'; ctx.textAlign = 'center';
+  ctx.fillText('Net: ' + d.netL.toFixed(0) + ' L  |  Toplam: ' + d.totalL.toFixed(0) + ' L  |  Doluluk: ' + d.pctNet.toFixed(1) + '%', cx, H - 7);
+}
+
+// ─── CLOCK ───────────────────────────────────────────────────
+function tick() {
+  var n = new Date();
+  document.getElementById('clock').textContent   = n.toLocaleTimeString('tr-TR');
+  document.getElementById('dateTxt').textContent = n.toLocaleDateString('tr-TR');
+}
+tick();
+setInterval(tick, 1000);
+
+// ─── EVENTS ──────────────────────────────────────────────────
+['inDiam','inLen','inHeight','inLiters','inTilt','inVana'].forEach(function(id) {
+  document.getElementById(id).addEventListener('input', update);
+});
+document.getElementById('inMeasPoint').addEventListener('change', update);
+
+// ─── RESIZE ──────────────────────────────────────────────────
+function resize() {
+  var w = vp.clientWidth, h = vp.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ─── ANIMATE ─────────────────────────────────────────────────
+var animT = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  animT += 0.016;
+  controls.update();
+
+  // Wave physics driven by camera azimuth rotation
+  var camAz = Math.atan2(camera.position.x - controls.target.x,
+                         camera.position.z - controls.target.z);
+  if (prevCamAz !== null) {
+    var dAz = camAz - prevCamAz;
+    if (dAz >  Math.PI) dAz -= 2 * Math.PI;
+    if (dAz < -Math.PI) dAz += 2 * Math.PI;
+    waveMomentum += dAz * 0.32;
+  }
+  prevCamAz = camAz;
+
+  // Light spring + gentle damping — wave persists ~2-3 seconds
+  waveMomentum -= waveOffset * 0.06;
+  waveMomentum *= 0.972;
+  waveOffset   += waveMomentum;
+  waveOffset    = Math.max(-VR * 0.22, Math.min(VR * 0.22, waveOffset));
+
+  // Surface ripple
+  var ripple = Math.sin(animT * 2.2) * 0.018 + Math.sin(animT * 3.9 + 1) * 0.009;
+
+  var y_wave = y_liq_base + waveOffset + ripple;
+  liquidClip.constant    = y_wave;
+  surfaceMesh.position.y = y_wave;
+
+  // Internal light follows wave
+  tankLight.position.y = waveOffset * 0.5;
+
+  renderer.render(scene, camera);
+}
+animate();
+
+// ─── INIT ────────────────────────────────────────────────────
+update();
+</script>
+</body>
+</html>
