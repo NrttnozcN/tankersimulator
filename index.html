@@ -6,6 +6,8 @@
 <title>ÖZDEMİRELLER — Mazot Tanker Simülasyonu</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -1167,12 +1169,25 @@ function drawCrossSection(c, d) {
   ctx.fillText('Net: ' + d.netL.toFixed(0) + ' L  |  Toplam: ' + d.totalL.toFixed(0) + ' L  |  Doluluk: ' + d.pctNet.toFixed(1) + '%', cx, H - 7);
 }
 
-// ─── ŞANTİYE VERİTABANI ─────────────────────────────────────
-var TANKLER = JSON.parse(localStorage.getItem('ozd_tankler') || '[]');
+// ─── ŞANTİYE VERİTABANI (Firebase) ──────────────────────────
+var _fbApp = firebase.initializeApp({
+  apiKey: "AIzaSyBWbLP_unW_c3o8rtwaPVZw0z0PEJNOSy8",
+  authDomain: "tankersimulasyonu.firebaseapp.com",
+  databaseURL: "https://tankersimulasyonu-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "tankersimulasyonu",
+  storageBucket: "tankersimulasyonu.firebasestorage.app",
+  messagingSenderId: "900745787684",
+  appId: "1:900745787684:web:1a7e6d89726fb5d2af1bb1"
+});
+var db = firebase.database(_fbApp);
+
+var TANKLER = [];
 var activeTankId = null;
 
 function saveTanklerDB() {
-  localStorage.setItem('ozd_tankler', JSON.stringify(TANKLER));
+  var obj = {};
+  TANKLER.forEach(function(t) { obj[t.id] = t; });
+  db.ref('tankler').set(obj);
 }
 
 function renderTankList() {
@@ -1305,7 +1320,15 @@ function deleteTanker() {
 }
 window.deleteTanker = deleteTanker;
 
-renderTankList();
+// Firebase gerçek zamanlı listener — tüm cihazlarda senkronize eder
+db.ref('tankler').on('value', function(snap) {
+  var val = snap.val();
+  TANKLER = val ? Object.values(val) : [];
+  var sel = document.getElementById('tankSelect');
+  var cur = sel ? sel.value : '';
+  renderTankList();
+  if (cur) sel.value = cur;
+});
 
 // ─── CLOCK ───────────────────────────────────────────────────
 function tick() {
