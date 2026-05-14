@@ -86,6 +86,50 @@ footer{background:var(--panel);border-top:1px solid var(--border);padding:7px 20
 footer strong{color:var(--accent)}
 footer .pow strong{color:var(--text)}
 
+/* ── ŞANTİYE YÖNETİMİ ──────────────────────────────────── */
+.stank-sel{width:100%;background:#060a10;border:1px solid var(--border);color:var(--text);
+  padding:8px 10px;border-radius:7px;font-size:.85rem;cursor:pointer;
+  -webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a7090'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+.stank-sel:focus{outline:none;border-color:var(--accent)}
+.stank-actions{display:flex;gap:5px;margin-top:7px}
+.stank-btn{flex:1;padding:7px 4px;border-radius:6px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);font-size:.62rem;cursor:pointer;
+  text-transform:uppercase;letter-spacing:.5px;transition:all .2s}
+.stank-btn:hover{border-color:var(--accent);color:var(--accent)}
+.stank-btn.primary{background:var(--accent);border-color:var(--accent);color:#000;font-weight:700}
+.stank-btn:disabled{opacity:0.3;cursor:not-allowed;pointer-events:none}
+.stank-badge{font-size:.6rem;color:var(--accent);background:rgba(240,128,16,.1);
+  border:1px solid rgba(240,128,16,.3);border-radius:5px;padding:4px 10px;
+  margin-top:7px;display:none;word-break:break-word}
+.stank-badge.vis{display:block}
+.locked .sec-hd{opacity:.55}
+.locked .sec-hd::before{content:'🔒 ';font-size:.8em}
+.locked input,.locked select{opacity:0.38;pointer-events:none;cursor:default}
+/* Modal */
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);
+  z-index:300;align-items:center;justify-content:center;padding:16px}
+.modal-ov.open{display:flex}
+.modal-box{background:var(--panel);border:1px solid var(--border);border-radius:14px;
+  width:min(360px,100%);max-height:92vh;overflow-y:auto;padding:20px}
+.modal-hd{font-size:.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;
+  letter-spacing:2px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.mfld{margin-bottom:9px}
+.mfld label{display:block;font-size:.58rem;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.5px;margin-bottom:3px}
+.mfld input,.mfld select{width:100%;background:#060a10;border:1px solid var(--border);
+  color:var(--text);padding:8px 10px;border-radius:7px;font-size:.9rem;
+  font-family:'Courier New',monospace;-webkit-appearance:none;appearance:none}
+.mfld input:focus,.mfld select:focus{outline:none;border-color:var(--accent)}
+.mrow{display:flex;gap:8px;align-items:center}
+.mrow input{flex:1}
+.mrow span{font-size:.68rem;color:var(--muted);white-space:nowrap}
+.modal-foot{display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
+.modal-foot button{flex:1;padding:10px;border-radius:8px;border:none;cursor:pointer;
+  font-size:.8rem;font-weight:600;transition:all .2s}
+.m-cancel{background:transparent;border:1px solid var(--border)!important;color:var(--text)}
+.m-save{background:var(--accent);color:#000}
 /* ── MOBİL LAYOUT ────────────────────────────────────────── */
 @media (max-width: 768px) {
   html,body{overflow:auto;height:auto}
@@ -172,7 +216,21 @@ footer .pow strong{color:var(--text)}
 <main>
 <aside id="panel">
 
+  <!-- Şantiye / Tanker Seçimi -->
   <div class="sec">
+    <div class="sec-hd">Şantiye / Tanker</div>
+    <select class="stank-sel" id="tankSelect" onchange="onTankSelect()">
+      <option value="">— Kayıtlı tanker seçiniz —</option>
+    </select>
+    <div class="stank-actions">
+      <button class="stank-btn primary" onclick="openTankModal('new')">+ Yeni</button>
+      <button class="stank-btn" id="btnEdit" onclick="openTankModal('edit')" disabled>✎ Düzenle</button>
+      <button class="stank-btn" id="btnDel"  onclick="deleteTanker()"        disabled>✕ Sil</button>
+    </div>
+    <div class="stank-badge" id="tankBadge"></div>
+  </div>
+
+  <div class="sec" id="dimSec">
     <div class="sec-hd">Tanker Boyutları</div>
     <div class="fld">
       <label>Tanker Çapı</label>
@@ -184,7 +242,7 @@ footer .pow strong{color:var(--text)}
     </div>
   </div>
 
-  <div class="sec">
+  <div class="sec" id="posSec">
     <div class="sec-hd">Tanker Pozisyonu</div>
     <div class="fld">
       <label>Arka Yükseklik (Eğim)</label>
@@ -319,6 +377,50 @@ footer .pow strong{color:var(--text)}
   <div class="pr-sig">
     <span>Made By <strong>Nurettin ÖZCAN</strong></span>
     <span>Powered by <strong>ÜLGEN Software</strong></span>
+  </div>
+</div>
+
+<!-- ŞANTİYE MODAL -->
+<div class="modal-ov" id="tankModal">
+  <div class="modal-box">
+    <div class="modal-hd" id="modalTitle">Yeni Tanker Kaydet</div>
+    <input type="hidden" id="modalEditId">
+    <div class="mfld">
+      <label>Şantiye Adı *</label>
+      <input type="text" id="mSantiye" placeholder="örn: Kadıköy Şantiyesi">
+    </div>
+    <div class="mfld">
+      <label>Tanker İsmi / No *</label>
+      <input type="text" id="mIsim" placeholder="örn: Tank No:1 / Ana Depo">
+    </div>
+    <div class="mfld">
+      <label>Tanker Çapı</label>
+      <div class="mrow"><input type="number" id="mCap" value="255" min="1" step="1"><span>cm</span></div>
+    </div>
+    <div class="mfld">
+      <label>Tanker Uzunluğu</label>
+      <div class="mrow"><input type="number" id="mLen" value="295" min="1" step="1"><span>cm</span></div>
+    </div>
+    <div class="mfld">
+      <label>Arka Eğim (Yükseklik farkı)</label>
+      <div class="mrow"><input type="number" id="mTilt" value="0" min="0" step="0.5"><span>cm</span></div>
+    </div>
+    <div class="mfld">
+      <label>Vana Yüksekliği (Ölü Alan)</label>
+      <div class="mrow"><input type="number" id="mVana" value="0" min="0" step="0.5"><span>cm</span></div>
+    </div>
+    <div class="mfld">
+      <label>Ölçüm Noktası</label>
+      <select id="mMeasPoint">
+        <option value="on">Ön (Vana Tarafı)</option>
+        <option value="orta">Orta</option>
+        <option value="arka">Arka</option>
+      </select>
+    </div>
+    <div class="modal-foot">
+      <button class="m-cancel" onclick="closeTankModal()">İptal</button>
+      <button class="m-save"   onclick="saveTankModal()">💾 Kaydet</button>
+    </div>
   </div>
 </div>
 
@@ -1064,6 +1166,146 @@ function drawCrossSection(c, d) {
   ctx.fillStyle = '#555'; ctx.font = '11px Segoe UI'; ctx.textAlign = 'center';
   ctx.fillText('Net: ' + d.netL.toFixed(0) + ' L  |  Toplam: ' + d.totalL.toFixed(0) + ' L  |  Doluluk: ' + d.pctNet.toFixed(1) + '%', cx, H - 7);
 }
+
+// ─── ŞANTİYE VERİTABANI ─────────────────────────────────────
+var TANKLER = JSON.parse(localStorage.getItem('ozd_tankler') || '[]');
+var activeTankId = null;
+
+function saveTanklerDB() {
+  localStorage.setItem('ozd_tankler', JSON.stringify(TANKLER));
+}
+
+function renderTankList() {
+  var sel = document.getElementById('tankSelect');
+  var cur = sel.value;
+  sel.innerHTML = '<option value="">— Kayıtlı tanker seçiniz —</option>';
+  var groups = {};
+  TANKLER.forEach(function(t) {
+    if (!groups[t.santiye]) groups[t.santiye] = [];
+    groups[t.santiye].push(t);
+  });
+  Object.keys(groups).sort().forEach(function(s) {
+    var og = document.createElement('optgroup');
+    og.label = '📍 ' + s;
+    groups[s].forEach(function(t) {
+      var o = document.createElement('option');
+      o.value = t.id; o.textContent = t.isim;
+      og.appendChild(o);
+    });
+    sel.appendChild(og);
+  });
+  if (cur) sel.value = cur;
+}
+
+function onTankSelect() {
+  var id = document.getElementById('tankSelect').value;
+  activeTankId = id || null;
+  var hasId = !!id;
+  document.getElementById('btnEdit').disabled = !hasId;
+  document.getElementById('btnDel').disabled  = !hasId;
+  var dimSec = document.getElementById('dimSec');
+  var posSec = document.getElementById('posSec');
+  var badge  = document.getElementById('tankBadge');
+  if (hasId) {
+    var t = TANKLER.find(function(x){ return x.id === id; });
+    if (!t) return;
+    document.getElementById('inDiam').value      = t.cap;
+    document.getElementById('inLen').value       = t.uzunluk;
+    document.getElementById('inTilt').value      = t.egim;
+    document.getElementById('inVana').value      = t.vana;
+    document.getElementById('inMeasPoint').value = t.olcumNokta;
+    dimSec.classList.add('locked');
+    posSec.classList.add('locked');
+    badge.textContent = '📍 ' + t.santiye + '  ·  ' + t.isim +
+      '  |  Ø' + t.cap + ' cm  ×  ' + t.uzunluk + ' cm';
+    badge.classList.add('vis');
+  } else {
+    dimSec.classList.remove('locked');
+    posSec.classList.remove('locked');
+    badge.classList.remove('vis');
+  }
+  update();
+}
+window.onTankSelect = onTankSelect;
+
+function openTankModal(mode) {
+  document.getElementById('modalEditId').value = '';
+  if (mode === 'edit' && activeTankId) {
+    var t = TANKLER.find(function(x){ return x.id === activeTankId; });
+    if (!t) return;
+    document.getElementById('modalTitle').textContent  = 'Tankeri Düzenle';
+    document.getElementById('modalEditId').value       = t.id;
+    document.getElementById('mSantiye').value          = t.santiye;
+    document.getElementById('mIsim').value             = t.isim;
+    document.getElementById('mCap').value              = t.cap;
+    document.getElementById('mLen').value              = t.uzunluk;
+    document.getElementById('mTilt').value             = t.egim;
+    document.getElementById('mVana').value             = t.vana;
+    document.getElementById('mMeasPoint').value        = t.olcumNokta;
+  } else {
+    document.getElementById('modalTitle').textContent  = 'Yeni Tanker Kaydet';
+    document.getElementById('mSantiye').value          = '';
+    document.getElementById('mIsim').value             = '';
+    document.getElementById('mCap').value              = document.getElementById('inDiam').value;
+    document.getElementById('mLen').value              = document.getElementById('inLen').value;
+    document.getElementById('mTilt').value             = document.getElementById('inTilt').value;
+    document.getElementById('mVana').value             = document.getElementById('inVana').value;
+    document.getElementById('mMeasPoint').value        = document.getElementById('inMeasPoint').value;
+  }
+  document.getElementById('tankModal').classList.add('open');
+}
+window.openTankModal = openTankModal;
+
+function closeTankModal() {
+  document.getElementById('tankModal').classList.remove('open');
+}
+window.closeTankModal = closeTankModal;
+
+function saveTankModal() {
+  var santiye = document.getElementById('mSantiye').value.trim();
+  var isim    = document.getElementById('mIsim').value.trim();
+  if (!santiye || !isim) { alert('Şantiye adı ve tanker ismi zorunlu!'); return; }
+  var data = {
+    santiye:    santiye,
+    isim:       isim,
+    cap:        parseFloat(document.getElementById('mCap').value)  || 0,
+    uzunluk:    parseFloat(document.getElementById('mLen').value)  || 0,
+    egim:       parseFloat(document.getElementById('mTilt').value) || 0,
+    vana:       parseFloat(document.getElementById('mVana').value) || 0,
+    olcumNokta: document.getElementById('mMeasPoint').value
+  };
+  var editId = document.getElementById('modalEditId').value;
+  if (editId) {
+    var idx = TANKLER.findIndex(function(x){ return x.id === editId; });
+    if (idx >= 0) { data.id = editId; TANKLER[idx] = data; }
+  } else {
+    data.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    TANKLER.push(data);
+    activeTankId = data.id;
+  }
+  saveTanklerDB();
+  renderTankList();
+  document.getElementById('tankSelect').value = data.id;
+  onTankSelect();
+  closeTankModal();
+}
+window.saveTankModal = saveTankModal;
+
+function deleteTanker() {
+  if (!activeTankId) return;
+  var t = TANKLER.find(function(x){ return x.id === activeTankId; });
+  if (!t) return;
+  if (!confirm('"' + t.santiye + ' / ' + t.isim + '" kaydı silinsin mi?')) return;
+  TANKLER = TANKLER.filter(function(x){ return x.id !== activeTankId; });
+  saveTanklerDB();
+  activeTankId = null;
+  document.getElementById('tankSelect').value = '';
+  renderTankList();
+  onTankSelect();
+}
+window.deleteTanker = deleteTanker;
+
+renderTankList();
 
 // ─── CLOCK ───────────────────────────────────────────────────
 function tick() {
